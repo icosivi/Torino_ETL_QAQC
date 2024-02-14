@@ -42,11 +42,7 @@ void categories(){
   palette[0] = 3;
   palette[1] = 5;
   palette[2] = 2;
-  //gStyle->SetPalette(3,palette); // custom palette used for Categories
   
-  gStyle->SetPalette(kBlackBody); // palette for I@V_current_level && VBD
-  TColor::InvertPalette(); // Uncomment when plotting I@V_current_level
-
   gStyle->SetTitleOffset( 1.3, "z" );
   gStyle->SetLabelOffset( 0., "z" );
   //gStyle->SetTitleSize(0.06,"z"); 
@@ -61,14 +57,14 @@ void categories(){
   /////////////////////////////////////////////////////////////////////
 
 
-  float V_current_level = 100. ; //k-factor not used to calculate VBD if VBD<V_current_level + Leakage current measured at this V
+  float V_current_level = 200. ; // Leakage current measured at this V
   float V_current_monitor = 200. ; //Voltage up to which the current level is monitored
   float VBD_expected = 200. ; //minimum VBD to be considered for GOOD or MEDIUM categories, if VBD<VBD_expected sensor is BAD
-  float V_difference = 20. ; //max difference in V between VBD_up and VBD_down for a sensor to be considered GOOD
+  float V_min_kfactor = 100. ; //k-factor not used to calculate VBD if VBD<V_min_kfactor
   float I_thr = 10.; //sensor discarded if I > I_thr [uA] in the voltage operation range [ 0-V_current_monitor ]
   float I_compliance = 1000; // VBD calculation begins when I < I_compliance  [uA]
   float I_compliance_minimum = 50; // [uA] VBD calculation performed only if compliance was set above this threshold
-  float k_thr = 8.; //k value to define VBD using k-factor method
+  float k_thr = 15.; // 8  k value to define VBD using k-factor method
   float current_conversion_value = 1E6; // conversion from [A] (raw data) to [uA] (used in the final plots)
   int start_bd_calculation = 5; //BD calculation start from this sampled bias point: avoid considering the very first voltages of the bias sweep 
 
@@ -81,14 +77,25 @@ void categories(){
   bool bcurrent = true;
   bool bvoltage = false;
   bool bcategory = false;
-  bool save = true;
+  bool bnoisy = false;
+  bool save = false;
+
+  if(bcategory) gStyle->SetPalette(3,palette); // custom palette used for Categories
+  
+  if(bvoltage) gStyle->SetPalette(kBlackBody); // palette for VBD
+
+  if(bcurrent || bnoisy){ 
+  gStyle->SetPalette(kBlackBody); // palette for I@V_current_level
+  TColor::InvertPalette();
+  }
+
 
   bool invert_polarity=true;
 
   TFile *file_qa;
   TTree *tree_qa;
   
-  file_qa = TFile::Open("root_files/UFSD4_16x16_IVtree.root");
+  file_qa = TFile::Open("../../root_files/UFSD4_16x16_IVtree.root");
   tree_qa = dynamic_cast<TTree*>(file_qa->Get("Tree"));
   TTreeReader reader_qa("Tree", file_qa);
   
@@ -119,6 +126,7 @@ void categories(){
   TH2F *hI_qa_100V[18];
   TH2F *hV_qa[18];
   TH2F *hbump_qa[18];
+  TH2F *hnoisy_qa[18];
   TH2F *hcount_qa[18];
   float min_I[18];
 
@@ -139,6 +147,7 @@ void categories(){
     min_I[i] = 1000;
 
     hbump_qa[i]=new TH2F( Form("bump_qa_W%i",i+1), Form("Categories on-wafer W%i",i+1), 5,2,7,5,2,7);
+    hnoisy_qa[i]=new TH2F( Form("noisy_qa_W%i",i+1), Form("Noisy pads on-wafer W%i",i+1), 5,2,7,5,2,7);
 
   }
 
@@ -225,13 +234,13 @@ void categories(){
             ///////// VBD "up" (Calculation start from the end of the Voltage array downwards) /////////
             for(int i=(int(I_qa.GetSize())-2); i>=start_bd_calculation; i--){
         
-              if(V_qa.At( I_qa.GetSize()-1 )<V_current_level){
+              if(V_qa.At( I_qa.GetSize()-1 )<V_min_kfactor){
                   
                   VBD_qa_u = V_qa.At( I_qa.GetSize()-1 ) ;
                   break ;
               }
               
-              if( I_qa.At(i)<I_compliance*(1./current_conversion_value) && V_qa.At(i)>=V_current_level ){
+              if( I_qa.At(i)<I_compliance*(1./current_conversion_value) && V_qa.At(i)>=V_min_kfactor ){
         
                 k_qa_u[0] = ( (I_qa.At(i)-I_qa.At(i-1))/(V_qa.At(i)-V_qa.At(i-1)) )*(V_qa.At(i)/I_qa.At(i)) ;
                 k_qa_u[1] = ( (I_qa.At(i+1)-I_qa.At(i))/(V_qa.At(i+1)-V_qa.At(i)) )*(V_qa.At(i)/I_qa.At(i)) ;
@@ -248,13 +257,13 @@ void categories(){
             ///////// VBD "down" (Calculation start from the beginning of the Voltage array upwards)/////////
             for(int i=start_bd_calculation; i<=(int(I_qa.GetSize())-2); i++){
         
-              if(V_qa.At( I_qa.GetSize()-1 )<V_current_level){
+              if(V_qa.At( I_qa.GetSize()-1 )<V_min_kfactor){
                   
                   VBD_qa_d = V_qa.At( I_qa.GetSize()-1 ) ;
                   break ;
               }
         
-              if( I_qa.At(i)<I_compliance*(1./current_conversion_value) && V_qa.At(i)>=V_current_level ){
+              if( I_qa.At(i)<I_compliance*(1./current_conversion_value) && V_qa.At(i)>=V_min_kfactor ){
                   
                 k_qa_d[0] = ( (I_qa.At(i)-I_qa.At(i-1))/(V_qa.At(i)-V_qa.At(i-1)) )*(V_qa.At(i)/I_qa.At(i)) ;
                 k_qa_d[1] = ( (I_qa.At(i+1)-I_qa.At(i))/(V_qa.At(i+1)-V_qa.At(i)) )*(V_qa.At(i)/I_qa.At(i)) ;
@@ -324,21 +333,26 @@ void categories(){
           if(vcount_i_qa[i][j][k]!=0) hI_qa_100V[i]->Fill(j+2,k+2, vi_qa[i][j][k]/vcount_i_qa[i][j][k] );
   
           if(vcount_bump_qa[i][j][k]!=0) total_sensors_counter_qa++;
+
+          if(vcount_bump_qa[i][j][k]==0) hnoisy_qa[i]->Fill(j+2,k+2,-1000);
           
           if( vbump_qa[i][j][k]/vcount_bump_qa[i][j][k]==1 ){
           
             hbump_qa[i]->Fill(j+2,k+2,1);
+            hnoisy_qa[i]->Fill(j+2,k+2,0);
             good_sensors_counter_qa++;
   
           }else if( vbump_qa[i][j][k]/vcount_bump_qa[i][j][k]>2 ){
   
             hbump_qa[i]->Fill(j+2,k+2,3);
+            hnoisy_qa[i]->Fill(j+2,k+2,0);
             bad_sensors_counter_qa++;
   
   
           }else if( vbump_qa[i][j][k]/vcount_bump_qa[i][j][k]>1 && vbump_qa[i][j][k]/vcount_bump_qa[i][j][k]<=2 ){
   
             hbump_qa[i]->Fill(j+2,k+2,2);
+            hnoisy_qa[i]->Fill(j+2,k+2,1);
             medium_sensors_counter_qa++;
   
           }
@@ -374,10 +388,13 @@ void categories(){
   TCanvas *cI_100V[18];
   TCanvas *cV[18];
   TCanvas *cbump[18];
+  TCanvas *cnoisy[18];
+
 
   for(int i=0; i<18; i++){
    
-    if( i!=9 && i!=10 ){
+    //if( i!=9 && i!=10 ){
+    if( i==6 ){
 
       //hI_qa_100V[i]->GetZaxis()->SetRangeUser( 0.1, hI_qa_100V[i]->GetMaximum() ); //Alternative colored axis range
       hI_qa_100V[i]->GetZaxis()->SetRangeUser( low_iv_range, high_iv_range );
@@ -399,6 +416,12 @@ void categories(){
       hbump_qa[i]->GetZaxis()->SetTitle("Category");
       hbump_qa[i]->GetXaxis()->SetTitle("column");
       hbump_qa[i]->GetYaxis()->SetTitle("row");
+
+
+      hnoisy_qa[i]->GetZaxis()->SetRangeUser( -0.1, 1 );
+      hnoisy_qa[i]->GetZaxis()->SetTitle("Presence of noisy pad(s)");
+      hnoisy_qa[i]->GetXaxis()->SetTitle("column");
+      hnoisy_qa[i]->GetYaxis()->SetTitle("row");
 
 
       if(bcurrent){
@@ -449,9 +472,24 @@ void categories(){
         hbump_qa[i]->GetXaxis()->SetNdivisions(4);
         hbump_qa[i]->GetYaxis()->SetNdivisions(3);
        
-        if(save) cbump[i]->SaveAs( Form("pics/categories_W%i_FINAL.png",i+1) );
+        if(save) cbump[i]->SaveAs( Form("pics/categories_W%i_FINAL.png",i+1) );   
 
-        
+      }
+
+
+      if(bnoisy){
+      
+        cnoisy[i]=new TCanvas(Form("c_noisy_W%i",i+1), Form("c noisy_W%i",i+1), 1000,1000);
+        cnoisy[i]->SetRightMargin(0.15);
+        cnoisy[i]->cd();
+        hnoisy_qa[i]->Draw("colz");
+        gPad->SetGrid(1,1);
+        gPad->Update();
+        cnoisy[i]->Update();
+        hnoisy_qa[i]->GetXaxis()->SetNdivisions(4);
+        hnoisy_qa[i]->GetYaxis()->SetNdivisions(3);
+       
+        if(save) cnoisy[i]->SaveAs( Form("pics/noisy_W%i_FINAL.png",i+1) );
 
       }
 
