@@ -57,14 +57,14 @@ void categories(){
   /////////////////////////////////////////////////////////////////////
 
 
-  float V_current_level = 200. ; // Leakage current measured at this V
+  float V_current_level = 250. ; // Leakage current measured at this V
   float V_current_monitor = 200. ; //Voltage up to which the current level is monitored
-  float VBD_expected = 200. ; //minimum VBD to be considered for GOOD or MEDIUM categories, if VBD<VBD_expected sensor is BAD
+  float VBD_expected = 240. ; //minimum VBD to be considered for GOOD or MEDIUM categories, if VBD<VBD_expected sensor is BAD
   float V_min_kfactor = 100. ; //k-factor not used to calculate VBD if VBD<V_min_kfactor
   float I_thr = 10.; //sensor discarded if I > I_thr [uA] in the voltage operation range [ 0-V_current_monitor ]
   float I_compliance = 1000; // VBD calculation begins when I < I_compliance  [uA]
   float I_compliance_minimum = 50; // [uA] VBD calculation performed only if compliance was set above this threshold
-  float k_thr = 15.; // 8  k value to define VBD using k-factor method
+  float k_thr = 20.; // 8  k value to define VBD using k-factor method
   float current_conversion_value = 1E6; // conversion from [A] (raw data) to [uA] (used in the final plots)
   int start_bd_calculation = 5; //BD calculation start from this sampled bias point: avoid considering the very first voltages of the bias sweep 
 
@@ -74,9 +74,9 @@ void categories(){
   float low_vbd_range = 0; //low and high ranges for VBD plot [V]
   float high_vbd_range = 300;
 
-  bool bcurrent = true;
+  bool bcurrent = false;
   bool bvoltage = false;
-  bool bcategory = false;
+  bool bcategory = true;
   bool bnoisy = false;
   bool save = false;
 
@@ -394,7 +394,7 @@ void categories(){
   for(int i=0; i<18; i++){
    
     //if( i!=9 && i!=10 ){
-    if( i==6 ){
+    if( i==4 || i==5 || i==6 || i==7 || i==8 ){
 
       //hI_qa_100V[i]->GetZaxis()->SetRangeUser( 0.1, hI_qa_100V[i]->GetMaximum() ); //Alternative colored axis range
       hI_qa_100V[i]->GetZaxis()->SetRangeUser( low_iv_range, high_iv_range );
