@@ -57,9 +57,9 @@ void categories(){
   /////////////////////////////////////////////////////////////////////
 
 
-  float V_current_level = 250. ; // Leakage current measured at this V
+  float V_current_level = 230. ; // Leakage current measured at this V
   float V_current_monitor = 200. ; //Voltage up to which the current level is monitored
-  float VBD_expected = 240. ; //minimum VBD to be considered for GOOD or MEDIUM categories, if VBD<VBD_expected sensor is BAD
+  float VBD_expected = 230. ; //minimum VBD to be considered for GOOD or MEDIUM categories, if VBD<VBD_expected sensor is BAD
   float V_min_kfactor = 100. ; //k-factor not used to calculate VBD if VBD<V_min_kfactor
   float I_thr = 10.; //sensor discarded if I > I_thr [uA] in the voltage operation range [ 0-V_current_monitor ]
   float I_compliance = 1000; // VBD calculation begins when I < I_compliance  [uA]
@@ -74,11 +74,13 @@ void categories(){
   float low_vbd_range = 0; //low and high ranges for VBD plot [V]
   float high_vbd_range = 300;
 
-  bool bcurrent = false;
+  bool bcurrent = true;
   bool bvoltage = false;
-  bool bcategory = true;
+  bool bcategory = false;
   bool bnoisy = false;
   bool save = false;
+
+  bool verbose = false;
 
   if(bcategory) gStyle->SetPalette(3,palette); // custom palette used for Categories
   
@@ -123,6 +125,7 @@ void categories(){
   float vvbd_qa[18][5][5];
   float vi_qa[18][5][5];
   float vbump_qa[18][5][5];
+  //float vnoisy_qa[18][5][5];
   TH2F *hI_qa_100V[18];
   TH2F *hV_qa[18];
   TH2F *hbump_qa[18];
@@ -139,6 +142,7 @@ void categories(){
         vcount_bump_qa[i][j][k]=0;
         vvbd_qa[i][j][k]=0;
         vi_qa[i][j][k]=0;
+        //vnoisy_qa[i][j][k]=0;
       }
     }
 
@@ -147,7 +151,7 @@ void categories(){
     min_I[i] = 1000;
 
     hbump_qa[i]=new TH2F( Form("bump_qa_W%i",i+1), Form("Categories on-wafer W%i",i+1), 5,2,7,5,2,7);
-    hnoisy_qa[i]=new TH2F( Form("noisy_qa_W%i",i+1), Form("Noisy pads on-wafer W%i",i+1), 5,2,7,5,2,7);
+    hnoisy_qa[i]=new TH2F( Form("noisy_qa_W%i",i+1), Form("Bad pads on-wafer W%i",i+1), 5,2,7,5,2,7);
 
   }
 
@@ -198,7 +202,12 @@ void categories(){
         k_qa_d[1] = 0.;
       
           
-          if(invert_polarity) for(int i=0; i<int(I_qa.GetSize()); i++) I_qa.At(i) = -I_qa.At(i);
+          if( I_qa.At(I_qa.GetSize()-1) ){ 
+
+            for(int i=0; i<int(I_qa.GetSize()); i++) I_qa.At(i) = -I_qa.At(i);
+            if(verbose) cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<" with negative current detected. Changing current polarity."<<endl;
+
+          }
       
           
           //////////// I@V_current_level calculation ///////////////////////
@@ -294,7 +303,12 @@ void categories(){
           }
       
          
-          if( VBD_qa_u>VBD_expected && VBD_qa_d!=-1000 &&  VBD_qa_d<=VBD_expected ) cout<<"!!! SENSOR WITH CURRENT JUMPS ALERT  !!!: "<<"from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<endl;
+          if( VBD_qa_u>VBD_expected && VBD_qa_d!=-1000 &&  VBD_qa_d<=VBD_expected ){ 
+
+            if(verbose) cout<<"!!! SENSOR WITH CURRENT JUMPS ALERT  !!!: "<<"from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<endl;
+            //vnoisy_qa[*wafer_qa-1][*col_qa-2][*row_qa-2] += 1;
+
+          }
           
           
           if( iv_quality && VBD_qa_u>VBD_expected && VBD_qa_d!=-1000 ){
@@ -316,9 +330,9 @@ void categories(){
             vbump_qa[*wafer_qa-1][*col_qa-2][*row_qa-2] += 100;
             vcount_bump_qa[*wafer_qa-1][*col_qa-2][*row_qa-2] += 1;
       
-          }else cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<" has Current within acceptance, but VBD could not be calculated. PLEASE CHECK."<<endl;
-      }else cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<" has Voltage and/or Current always equal to zero. PLEASE CHECK."<<endl;
-    }else cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<Form(": Voltage and/or Current vectors have less than %i elements. PLEASE CHECK.",start_bd_calculation)<<endl;
+          }else if(verbose) cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<" has Current within acceptance, but VBD could not be calculated. PLEASE CHECK."<<endl;
+      }else if(verbose) cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<" has Voltage and/or Current always equal to zero. PLEASE CHECK."<<endl;
+    }else if(verbose) cout<<"Sensor from wafer "<<*wafer_qa<<" row "<<*row_qa<<" column "<<*col_qa<<Form(": Voltage and/or Current vectors have less than %i elements. PLEASE CHECK.",start_bd_calculation)<<endl;
   }
 
 
@@ -331,6 +345,9 @@ void categories(){
   
           if(vcount_vbd_qa[i][j][k]!=0) hV_qa[i]->Fill(j+2,k+2, vvbd_qa[i][j][k]/vcount_vbd_qa[i][j][k] );
           if(vcount_i_qa[i][j][k]!=0) hI_qa_100V[i]->Fill(j+2,k+2, vi_qa[i][j][k]/vcount_i_qa[i][j][k] );
+
+          //if(vnoisy_qa[i][j][k]!=0) hnoisy_qa[i]->Fill(j+2,k+2,1);
+          //else hnoisy_qa[i]->Fill(j+2,k+2,0);
   
           if(vcount_bump_qa[i][j][k]!=0) total_sensors_counter_qa++;
 
@@ -370,11 +387,14 @@ void categories(){
   }
 
 
-
-  cout<<"Fraction of GOOD sensors (on-wafer): "<<double(good_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
-  cout<<"Fraction of MEDIUM sensors (on-wafer): "<<double(medium_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
-  cout<<"Fraction of BAD sensors (on-wafer): "<<double(bad_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
-  cout<<"\n";
+  if(verbose){
+  
+    cout<<"Fraction of GOOD sensors (on-wafer): "<<double(good_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
+    cout<<"Fraction of MEDIUM sensors (on-wafer): "<<double(medium_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
+    cout<<"Fraction of BAD sensors (on-wafer): "<<double(bad_sensors_counter_qa)/double(total_sensors_counter_qa)<<endl;
+    cout<<"\n";
+  
+  }
 
   /*cout<<"Fraction with I<10 uA: "<<double(current_levels_counter[0])/double(total_sensors_counter_qa)<<endl;
   cout<<"Fraction with I in 10-50 uA range: "<<double(current_levels_counter[1])/double(total_sensors_counter_qa)<<endl;
@@ -394,7 +414,8 @@ void categories(){
   for(int i=0; i<18; i++){
    
     //if( i!=9 && i!=10 ){
-    if( i==4 || i==5 || i==6 || i==7 || i==8 ){
+    //if( i==4 || i==5 || i==6 || i==7 || i==8 ){
+    if( i==14 ){
 
       //hI_qa_100V[i]->GetZaxis()->SetRangeUser( 0.1, hI_qa_100V[i]->GetMaximum() ); //Alternative colored axis range
       hI_qa_100V[i]->GetZaxis()->SetRangeUser( low_iv_range, high_iv_range );
@@ -419,7 +440,7 @@ void categories(){
 
 
       hnoisy_qa[i]->GetZaxis()->SetRangeUser( -0.1, 1 );
-      hnoisy_qa[i]->GetZaxis()->SetTitle("Presence of noisy pad(s)");
+      hnoisy_qa[i]->GetZaxis()->SetTitle("Presence of bad pad(s)");
       hnoisy_qa[i]->GetXaxis()->SetTitle("column");
       hnoisy_qa[i]->GetYaxis()->SetTitle("row");
 
