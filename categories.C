@@ -80,7 +80,7 @@ void categories(){
   bool bnoisy = false;
   bool save = false;
 
-  bool verbose = false;
+  bool verbose = true;
 
   if(bcategory) gStyle->SetPalette(3,palette); // custom palette used for Categories
   
