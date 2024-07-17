@@ -64,7 +64,7 @@ void categories(){
   float I_thr = 10.; //sensor discarded if I > I_thr [uA] in the voltage operation range [ 0-V_current_monitor ]
   float I_compliance = 1000; // VBD calculation begins when I < I_compliance  [uA]
   float I_compliance_minimum = 50; // [uA] VBD calculation performed only if compliance was set above this threshold
-  float k_thr = 20.; // 8  k value to define VBD using k-factor method
+  float k_thr = 8.; // 8  k value to define VBD using k-factor method
   float current_conversion_value = 1E6; // conversion from [A] (raw data) to [uA] (used in the final plots)
   int start_bd_calculation = 5; //BD calculation start from this sampled bias point: avoid considering the very first voltages of the bias sweep 
 
@@ -74,8 +74,8 @@ void categories(){
   float low_vbd_range = 0; //low and high ranges for VBD plot [V]
   float high_vbd_range = 300;
 
-  bool bcurrent = true;
-  bool bvoltage = false;
+  bool bcurrent = false;
+  bool bvoltage = true;
   bool bcategory = false;
   bool bnoisy = false;
   bool save = false;
@@ -253,6 +253,7 @@ void categories(){
         
                 k_qa_u[0] = ( (I_qa.At(i)-I_qa.At(i-1))/(V_qa.At(i)-V_qa.At(i-1)) )*(V_qa.At(i)/I_qa.At(i)) ;
                 k_qa_u[1] = ( (I_qa.At(i+1)-I_qa.At(i))/(V_qa.At(i+1)-V_qa.At(i)) )*(V_qa.At(i)/I_qa.At(i)) ;
+                if(*wafer_qa==1 && *row_qa==4 && *col_qa==3) cout<<k_qa_u[0]<<" "<<k_qa_u[1]<<" "<<V_qa.At(i)<<endl;
         
                 if( k_qa_u[0]<k_thr && k_qa_u[1]>=k_thr ){
                   
@@ -415,7 +416,7 @@ void categories(){
    
     //if( i!=9 && i!=10 ){
     //if( i==4 || i==5 || i==6 || i==7 || i==8 ){
-    if( i==14 ){
+    if( i==0 ){
 
       //hI_qa_100V[i]->GetZaxis()->SetRangeUser( 0.1, hI_qa_100V[i]->GetMaximum() ); //Alternative colored axis range
       hI_qa_100V[i]->GetZaxis()->SetRangeUser( low_iv_range, high_iv_range );
