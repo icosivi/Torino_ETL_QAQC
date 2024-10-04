@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "categories.C": "cpp"
+        "categories.C": "cpp",
+        "VGL_CV.C": "cpp"
     }
 }
